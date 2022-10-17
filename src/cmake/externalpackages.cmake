@@ -248,18 +248,19 @@ checked_find_package (Nuke)
 
 checked_find_package (OpenGL)   # used for iv
 
-# Qt -- used for iv
-set (qt5_modules Core Gui Widgets)
-if (OPENGL_FOUND)
-    list (APPEND qt5_modules OpenGL)
-endif ()
 option (USE_QT "Use Qt if found" ON)
-checked_find_package (Qt5 COMPONENTS ${qt5_modules})
-if (USE_QT AND NOT Qt5_FOUND AND APPLE)
-    message (STATUS "  If you think you installed qt5 with Homebrew and it still doesn't work,")
-    message (STATUS "  try:   export PATH=/usr/local/opt/qt5/bin:$PATH")
+if (USE_QT)
+    # Qt -- used for iv
+    set (qt5_modules Core Gui Widgets)
+    if (OPENGL_FOUND)
+        list (APPEND qt5_modules OpenGL)
+    endif ()
+    checked_find_package (Qt5 COMPONENTS ${qt5_modules})
+    if (USE_QT AND NOT Qt5_FOUND AND APPLE)
+        message (STATUS "  If you think you installed qt5 with Homebrew and it still doesn't work,")
+        message (STATUS "  try:   export PATH=/usr/local/opt/qt5/bin:$PATH")
+    endif ()
 endif ()
-
 
 
 
