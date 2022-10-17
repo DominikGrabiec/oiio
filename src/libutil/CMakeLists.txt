@@ -18,8 +18,7 @@ target_link_libraries (OpenImageIO_Util
             ${OPENIMAGEIO_IMATH_TARGETS}
             $<TARGET_NAME_IF_EXISTS:TBB::tbb>
         PRIVATE
-            $<TARGET_NAME_IF_EXISTS:Boost::filesystem>
-            $<TARGET_NAME_IF_EXISTS:Boost::thread>
+            ${Boost_LIBRARIES}
             ${CMAKE_DL_LIBS}
         )
 

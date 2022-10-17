@@ -140,7 +140,7 @@ target_link_libraries (OpenImageIO
             $<TARGET_NAME_IF_EXISTS:TBB::tbb>
             ${BZIP2_LIBRARIES}
             ZLIB::ZLIB
-            $<TARGET_NAME_IF_EXISTS:Boost::thread>
+            ${Boost_LIBRARIES}
             ${CMAKE_DL_LIBS}
         )
 
