@@ -34,8 +34,13 @@ if (WIN32)
 endif()
 
 target_compile_definitions (OpenImageIO_Util PRIVATE OpenImageIO_EXPORTS)
+
 if (NOT BUILD_SHARED_LIBS)
     target_compile_definitions (OpenImageIO_Util PUBLIC OIIO_STATIC_DEFINE=1)
+endif ()
+
+if (NOT INTERNALIZE_FMT AND NOT OIIO_USING_FMT_LOCAL)
+    target_compile_definitions (OpenImageIO_Util PUBLIC OIIO_USE_EXTERNAL_FMT)
 endif ()
 
 # Propagate C++ minimum to downstream consumers
