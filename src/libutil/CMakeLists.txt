@@ -16,11 +16,18 @@ target_link_libraries (OpenImageIO_Util
             ${GCC_ATOMIC_LIBRARIES}
             ${OPENIMAGEIO_IMATH_DEPENDENCY_VISIBILITY}
             ${OPENIMAGEIO_IMATH_TARGETS}
-            $<TARGET_NAME_IF_EXISTS:TBB::tbb>
         PRIVATE
             ${Boost_LIBRARIES}
+            $<TARGET_NAME_IF_EXISTS:TBB::tbb>
             ${CMAKE_DL_LIBS}
         )
+
+if (NOT OIIO_USING_FMT_LOCAL)
+    target_include_directories (OpenImageIO_Util
+                                PUBLIC ${FMT_INCLUDES} )
+    target_link_libraries (OpenImageIO_Util
+                           PUBLIC $<TARGET_NAME_IF_EXISTS:fmt::fmt> )
+endif ()
 
 if (WIN32)
     target_link_libraries (OpenImageIO_Util PRIVATE psapi)
