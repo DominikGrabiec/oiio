@@ -8,9 +8,11 @@
 #include <OpenImageIO/platform.h>
 #include <OpenImageIO/type_traits.h>
 
+#ifndef OIIO_USE_EXTERNAL_FMT
 // We want the header-only implementation of fmt
 #ifndef FMT_HEADER_ONLY
 #    define FMT_HEADER_ONLY
+#endif
 #endif
 
 // Disable fmt exceptions
@@ -38,9 +40,15 @@ OIIO_PRAGMA_WARNING_PUSH
 #    pragma GCC diagnostic ignored "-Wtautological-constant-compare"
 #endif
 
+#ifndef OIIO_USE_EXTERNAL_FMT
 #include <OpenImageIO/detail/fmt/format.h>
 #include <OpenImageIO/detail/fmt/ostream.h>
 #include <OpenImageIO/detail/fmt/printf.h>
+#else
+#include <fmt/format.h>
+#include <fmt/ostream.h>
+#include <fmt/printf.h>
+#endif
 
 OIIO_PRAGMA_WARNING_POP
 
