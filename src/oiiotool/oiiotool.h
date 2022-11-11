@@ -73,6 +73,7 @@ class Oiiotool {
 public:
     // General options
     bool verbose;
+    bool quiet;
     bool debug;
     bool dryrun;
     bool runstats;
@@ -98,6 +99,7 @@ public:
     bool eval_enable;              // Enable evaluation of expressions
     bool skip_bad_frames = false;  // Just skip a bad frame, don't exit
     bool nostderr        = false;  // If true, use stdout for errors
+    bool noerrexit       = false;  // Don't exit on error
     std::string dumpdata_C_name;
     std::string full_command_line;
     std::string printinfo_metamatch;
@@ -283,7 +285,7 @@ public:
     }
 
     // Parse geom in the form of "x,y" to retrieve a 2D integer position.
-    bool get_position(string_view command, string_view geom, int& x, int& y);
+    // bool get_position(string_view command, string_view geom, int& x, int& y);
 
     // Modify the resolution and/or offset according to what's in geom.
     // Valid geometries are WxH (resolution), +X+Y (offsets), WxH+X+Y

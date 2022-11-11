@@ -37,6 +37,11 @@
 #include <OpenImageIO/sysutil.h>
 #include <OpenImageIO/timer.h>
 
+#ifndef NDEBUG
+#    define OIIO_UNIT_TEST_QUIET_SUCCESS
+#    include <OpenImageIO/unittest.h>
+#endif
+
 using namespace OIIO;
 using namespace OiioTool;
 using namespace ImageBufAlgo;
@@ -116,6 +121,7 @@ void
 Oiiotool::clear_options()
 {
     verbose            = false;
+    quiet              = false;
     debug              = false;
     dryrun             = false;
     runstats           = false;
@@ -276,10 +282,10 @@ unit_test_scan_box()
 {
     Strutil::print("unit test scan_box...\n");
     int xmin = -1, ymin = -1, xmax = -1, ymax = -1;
-    OIIO_ASSERT(scan_box("11,12,13,14", xmin, ymin, xmax, ymax) && xmin == 11
-                && ymin == 12 && xmax == 13 && ymax == 14);
-    OIIO_ASSERT(scan_box("1,2,3", xmin, ymin, xmax, ymax) == false);
-    OIIO_ASSERT(scan_box("1,2,3,4,5", xmin, ymin, xmax, ymax) == false);
+    OIIO_CHECK_ASSERT(scan_box("11,12,13,14", xmin, ymin, xmax, ymax)
+                      && xmin == 11 && ymin == 12 && xmax == 13 && ymax == 14);
+    OIIO_CHECK_ASSERT(scan_box("1,2,3", xmin, ymin, xmax, ymax) == false);
+    OIIO_CHECK_ASSERT(scan_box("1,2,3,4,5", xmin, ymin, xmax, ymax) == false);
 }
 #endif
 
@@ -493,8 +499,10 @@ Oiiotool::error(string_view command, string_view explanation) const
     // Repeat the command line, so if oiiotool is being called from a
     // script, it's easy to debug how the command was mangled.
     errstream << "Full command line was:\n> " << full_command_line << "\n";
-    ot.ap.abort();  // Cease further processing of the command line
-    ot.return_value = EXIT_FAILURE;
+    if (!ot.noerrexit) {
+        ot.ap.abort();  // Cease further processing of the command line
+        ot.return_value = EXIT_FAILURE;
+    }
 }
 
 
@@ -1484,6 +1492,7 @@ erase_attribute(cspan<const char*> argv)
 
 
 
+#if 0 /* apparently unused */
 bool
 Oiiotool::get_position(string_view command, string_view geom, int& x, int& y)
 {
@@ -1494,6 +1503,7 @@ Oiiotool::get_position(string_view command, string_view geom, int& x, int& y)
         errorfmt(command, "Unrecognized position \"{}\"", orig_geom);
     return ok;
 }
+#endif
 
 
 
@@ -1576,6 +1586,86 @@ Oiiotool::adjust_geometry(string_view command, int& w, int& h, int& x, int& y,
     // Strutil::print("geom {}x{}, {}d{}d\n", w, h, x, y);
     return true;
 }
+
+#ifdef OIIO_UNIT_TESTS
+static void
+unit_test_adjust_geometry()
+{
+    // box
+    int w, h, x, y;
+    w = h = x = y = -42;
+    OIIO_CHECK_ASSERT(ot.adjust_geometry("foo", w, h, x, y, "10,20,130,145")
+                      && x == 10 && y == 20 && w == 121 && h == 126);
+
+    // geom
+    w = h = x = y = -42;
+    OIIO_CHECK_ASSERT(ot.adjust_geometry("foo", w, h, x, y, "10x20+100+200")
+                      && x == 100 && y == 200 && w == 10 && h == 20);
+    w = h = x = y = -42;
+    OIIO_CHECK_ASSERT(ot.adjust_geometry("foo", w, h, x, y, "10x20-100-200")
+                      && x == -100 && y == -200 && w == 10 && h == 20);
+    w = 100, h = 50, x = y = 0;
+    OIIO_CHECK_ASSERT(ot.adjust_geometry("foo", w, h, x, y, "20x0+100+200")
+                      && x == 100 && y == 200 && w == 20 && h == 10);
+    w = 100, h = 50, x = y = 0;
+    OIIO_CHECK_ASSERT(ot.adjust_geometry("foo", w, h, x, y, "0x20+100+200")
+                      && x == 100 && y == 200 && w == 40 && h == 20);
+    OIIO_CHECK_ASSERT(
+        !ot.adjust_geometry("foo", w, h, x, y, "10x20+100+200", true, false));
+
+    // res
+    w = h = x = y = -42;
+    OIIO_CHECK_ASSERT(ot.adjust_geometry("foo", w, h, x, y, "10x20") && x == -42
+                      && y == -42 && w == 10 && h == 20);
+    w = 100, h = 50, x = y = 0;
+    OIIO_CHECK_ASSERT(ot.adjust_geometry("foo", w, h, x, y, "20x0") && x == 0
+                      && y == 0 && w == 20 && h == 10);
+    w = 100, h = 50, x = y = 0;
+    OIIO_CHECK_ASSERT(ot.adjust_geometry("foo", w, h, x, y, "0x20") && x == 0
+                      && y == 0 && w == 40 && h == 20);
+    OIIO_CHECK_ASSERT(
+        !ot.adjust_geometry("foo", w, h, x, y, "10x20", true, false));
+
+    // scale by percentage
+    w = h = 100;
+    x = y = -42;
+    OIIO_CHECK_ASSERT(ot.adjust_geometry("foo", w, h, x, y, "200%x50%", true)
+                      && x == -42 && y == -42 && w == 200 && h == 50);
+    w = h = 100;
+    x = y = -42;
+    OIIO_CHECK_ASSERT(!ot.adjust_geometry("foo", w, h, x, y, "200%x50%"));
+    w = 640;
+    h = 480;
+    x = y = -42;
+    OIIO_CHECK_ASSERT(ot.adjust_geometry("foo", w, h, x, y, "200%", true)
+                      && x == -42 && y == -42 && w == 1280 && h == 960);
+    OIIO_CHECK_ASSERT(!ot.adjust_geometry("foo", w, h, x, y, "200%"));
+
+    // offset
+    w = h = x = y = -42;
+    OIIO_CHECK_ASSERT(ot.adjust_geometry("foo", w, h, x, y, "+100+200")
+                      && x == 100 && y == 200 && w == -42 && h == -42);
+
+    // scale by factor
+    w = 640;
+    h = 480;
+    x = y = -42;
+    OIIO_CHECK_ASSERT(ot.adjust_geometry("foo", w, h, x, y, "2", true)
+                      && x == -42 && y == -42 && w == 1280 && h == 960);
+    OIIO_CHECK_ASSERT(!ot.adjust_geometry("foo", w, h, x, y, "2"));
+    w = 640;
+    h = 480;
+    x = y = -42;
+    OIIO_CHECK_ASSERT(ot.adjust_geometry("foo", w, h, x, y, "0.5", true)
+                      && x == -42 && y == -42 && w == 320 && h == 240);
+    OIIO_CHECK_ASSERT(!ot.adjust_geometry("foo", w, h, x, y, "0.5"));
+
+    // errors
+    w = h = x = y = -42;
+    OIIO_CHECK_ASSERT(!ot.adjust_geometry("foo", w, h, x, y, "invalid")
+                      && x == -42 && y == -42 && w == -42 && h == -42);
+}
+#endif
 
 
 
@@ -3065,6 +3155,10 @@ action_selectmip(int argc, const char* argv[])
     }
 
     ImageRecRef newimg(new ImageRec(*ot.curimg, -1, miplevel, true, true));
+    if (newimg->has_error()) {
+        ot.error(command, newimg->geterror());
+        return 0;
+    }
     ot.curimg = newimg;
     return 0;
 }
@@ -5684,7 +5778,7 @@ output_file(int /*argc*/, const char* argv[])
     double optime = timer();
     ot.num_outputs += 1;
 
-    if (ot.debug)
+    if (ot.debug && ot.runstats)
         Strutil::print("    output took {}  (total time {}, mem {})\n",
                        Strutil::timeintervalformat(optime, 2),
                        Strutil::timeintervalformat(ot.total_runtime(), 2),
@@ -6065,7 +6159,11 @@ oiiotool_unit_tests()
 #ifdef OIIO_UNIT_TESTS
     using Strutil::print;
     print("Running unit tests...\n");
+    auto e       = ot.noerrexit;
+    ot.noerrexit = true;
     unit_test_scan_box();
+    unit_test_adjust_geometry();
+    ot.noerrexit = e;
     print("...end of unit tests\n");
 #endif
 }
@@ -6111,10 +6209,13 @@ Oiiotool::getargs(int argc, char* argv[])
       });
     ap.arg("-v", &ot.verbose)
       .help("Verbose status messages");
-    ap.arg("-q %!", &ot.verbose)
-      .help("Quiet mode (turn verbose off)");
+    ap.arg("-q")
+      .help("Quiet mode (turn verbose off and reduce printed output)")
+      .action([](cspan<const char*>){ ot.verbose = false; ot.quiet = true; });
     ap.arg("-n", &ot.dryrun)
       .help("No saved output (dry run)");
+    ap.arg("--no-error-exit", ot.noerrexit)
+      .help("Do not exit upon error, try to process additional comands (danger!)");
     ap.arg("-a", &ot.allsubimages)
       .help("Do operations on all subimages/miplevels");
     ap.arg("--debug", &ot.debug)
@@ -6722,7 +6823,8 @@ Oiiotool::getargs(int argc, char* argv[])
     if (ap.parse_args(argc, (const char**)argv) < 0) {
         auto& errstream(ot.nostderr ? std::cout : std::cerr);
         errstream << ap.geterror() << std::endl;
-        print_help(ap);
+        if (!ot.quiet)
+            print_help(ap);
         // Repeat the command line, so if oiiotool is being called from a
         // script, it's easy to debug how the command was mangled.
         errstream << "\nFull command line was:\n> " << ot.full_command_line
@@ -6737,8 +6839,10 @@ Oiiotool::getargs(int argc, char* argv[])
         // exit(EXIT_SUCCESS);
     }
     if (argc <= 1) {
-        ap.briefusage();
-        std::cout << "\nFor detailed help: oiiotool --help\n";
+        if (!ot.quiet) {
+            ap.briefusage();
+            std::cout << "\nFor detailed help: oiiotool --help\n";
+        }
         ap.abort();
         // exit(EXIT_SUCCESS);
     }
